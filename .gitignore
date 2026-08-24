@@ -1,0 +1,44 @@
+# ─── Dependencies ─────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Environment Variables ────────────────────────────────────────────────────────
+# Never commit real secrets — commit .env.example instead
+.env
+.env.local
+.env.*.local
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────────
+*.log
+logs/
+pids/
+*.pid
+*.seed
+
+# ─── OS Files ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+# ─── Editor / IDE ─────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── Build Output ─────────────────────────────────────────────────────────────────
+dist/
+build/
+coverage/
+
+# ─── Docker ───────────────────────────────────────────────────────────────────────
+# Don't ignore docker-compose.yml — it's part of the project
+# But do ignore local override files with secrets
+docker-compose.override.yml

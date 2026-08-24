@@ -1,0 +1,114 @@
+version: '3.8'
+
+# ─── Named Volumes ────────────────────────────────────────────────────────────────
+# Persist data across container restarts. Without volumes, data is lost
+# when a container is removed.
+volumes:
+  mongodb_data:       # MongoDB data files
+  prometheus_data:    # Prometheus time-series database
+  grafana_data:       # Grafana dashboards and settings
+
+# ─── Networks ─────────────────────────────────────────────────────────────────────
+# A dedicated bridge network so all services can reach each other by service name
+# (e.g., "mongodb", "prometheus") without exposing unnecessary ports externally.
+networks:
+  monitoring:
+    driver: bridge
+
+# ─── Services ─────────────────────────────────────────────────────────────────────
+services:
+
+  # ── 1. Express API ──────────────────────────────────────────────────────────────
+  app:
+    build:
+      context: .          # Build from Dockerfile in the current directory
+      dockerfile: Dockerfile
+    container_name: express_api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"       # Expose API to host machine
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGODB_URI=mongodb://mongodb:27017/mydb
+    depends_on:
+      mongodb:
+        condition: service_healthy   # Wait until MongoDB passes its health check
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s   # Give the app time to connect to MongoDB on first start
+
+  # ── 2. MongoDB ──────────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"     # Expose for local tools like MongoDB Compass
+    volumes:
+      - mongodb_data:/data/db   # Persist database files
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  # ── 3. Prometheus ───────────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"       # Prometheus web UI and API
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro   # Mount config (read-only)
+      - prometheus_data:/prometheus                           # Persist TSDB data
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'   # Keep 15 days of metrics history
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'              # Allow config reload via POST /-/reload
+    depends_on:
+      - app
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── 4. Grafana ──────────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.3
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"       # Map host 3001 → Grafana's internal 3000 (avoids conflict with the API)
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false        # Disable public user registration
+    volumes:
+      - grafana_data:/var/lib/grafana                                          # Persist dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro                    # Auto-configure datasources
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

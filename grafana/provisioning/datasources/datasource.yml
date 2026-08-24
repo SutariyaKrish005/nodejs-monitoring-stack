@@ -1,0 +1,19 @@
+# ─── Grafana Datasource Provisioning ─────────────────────────────────────────────
+# This file is automatically loaded by Grafana on startup.
+# It pre-configures Prometheus as the default datasource so you don't have to
+# set it up manually through the UI every time the container is recreated.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy           # Grafana server proxies requests to Prometheus (not the browser)
+    url: http://prometheus:9090   # Prometheus service name resolves via Docker DNS
+    isDefault: true         # Mark as the default datasource for new dashboards
+    editable: true          # Allow edits through the Grafana UI
+    jsonData:
+      httpMethod: POST                  # Use POST for better query performance
+      timeInterval: '15s'               # Match Prometheus scrape_interval
+      queryTimeout: '60s'               # Timeout for long-running queries
+      exemplarTraceIdDestinations: []

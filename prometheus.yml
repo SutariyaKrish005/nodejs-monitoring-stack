@@ -1,0 +1,39 @@
+# ─── Prometheus Global Configuration ─────────────────────────────────────────────
+global:
+  scrape_interval: 15s      # How often Prometheus collects metrics from targets
+  evaluation_interval: 15s  # How often Prometheus evaluates alerting rules
+  scrape_timeout: 10s       # Timeout for a single scrape request
+
+# ─── Alertmanager Configuration (optional, placeholder for future use) ────────────
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# ─── Rule Files (optional, for alerting rules) ────────────────────────────────────
+# rule_files:
+#   - "alert_rules.yml"
+
+# ─── Scrape Configurations ────────────────────────────────────────────────────────
+# Each job defines a set of targets Prometheus will scrape for metrics.
+scrape_configs:
+
+  # ── Job 1: Prometheus self-monitoring ───────────────────────────────────────────
+  # Prometheus scrapes its own /metrics endpoint to track its own health.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+  # ── Job 2: Express API ───────────────────────────────────────────────────────────
+  # Scrapes the /metrics endpoint exposed by the Node.js prom-client library.
+  # "app" resolves to the Express container via Docker's internal DNS.
+  - job_name: 'express-api'
+    scrape_interval: 15s         # Override global interval for this job (same here)
+    metrics_path: '/metrics'     # The endpoint exposing Prometheus-format metrics
+    static_configs:
+      - targets: ['app:3000']    # Docker service name + internal port
+        labels:
+          service: 'express-api'
+          environment: 'production'
