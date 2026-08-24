@@ -377,3 +377,14 @@ docker-compose exec app sh
 ## License
 
 MIT
+
+
+## Screenshots
+
+### Grafana Dashboard
+
+![Grafana Dashboard](https://github.com/SutariyaKrish005/nodejs-monitoring-stack/blob/main/grafana%20(1).png?raw=true)
+
+### Prometheus Metrics
+
+![Prometheus Targets](https://github.com/SutariyaKrish005/nodejs-monitoring-stack/blob/main/grafana%20(2).png?raw=true)
